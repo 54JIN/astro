@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-// const Ticket = require('./ticket')
+const Contract = require('./contract')
 
 const userSchema = new mongoose.Schema({
     firstName: {
@@ -43,13 +43,18 @@ const userSchema = new mongoose.Schema({
     }]
 })
 
-//Creates a relationship between User and Ticket for Mongoose to reference to
-userSchema.virtual('tickets', {
-    ref: 'Ticket',
+/*
+    Objective: Creates a relationship between User and Contract for Mongoose to reference to
+*/
+userSchema.virtual('contracts', {
+    ref: 'Contract',
     localField: '_id',
     foreignField: 'owner'
 })
 
+/*
+    Objective: Before returning back the users information, remove the password and tokens from the response.
+*/
 userSchema.methods.toJSON = function () {
     const user = this
     const userObject = user.toObject()
@@ -60,6 +65,9 @@ userSchema.methods.toJSON = function () {
     return userObject
 }
 
+/*
+    Objective: Generate an authentication token with JWT for the user to verify their credentials.
+*/
 userSchema.methods.generateAuthToken = async function () {
     const user = this
     const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET)
@@ -70,6 +78,9 @@ userSchema.methods.generateAuthToken = async function () {
     return token
 }
 
+/*
+    Objective: 
+*/
 userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email })
 
@@ -86,6 +97,9 @@ userSchema.statics.findByCredentials = async (email, password) => {
     return user
 }
 
+/*
+    Objective: Before saving the password into the database, bcrypt the password to increase security before storage. 
+*/
 userSchema.pre('save', async function (next) {
     const user = this
 
@@ -96,9 +110,12 @@ userSchema.pre('save', async function (next) {
     next()
 })
 
+/*
+    Objective: When the user is deleted from the database, any associated data in relation to the user must be deleted from the database as well. 
+*/
 userSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
     const user = this
-    // await Ticket.deleteMany({ owner: user._id })
+    await Contract.deleteMany({ owner: user._id })
     next()
 })
 
